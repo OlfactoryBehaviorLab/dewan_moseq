@@ -1,0 +1,14 @@
+[project]
+name = "dewan-moseq"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "h5py>=3.15.1",
+    "jupyter[jupyter]>=1.1.1",
+    "matplotlib>=3.10.8",
+    "numpy>=2.4.2",
+    "openpyxl>=3.1.5",
+    "pandas>=3.0.1",
+]
