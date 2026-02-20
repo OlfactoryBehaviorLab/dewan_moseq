@@ -1,7 +1,10 @@
 import logging
 import logging.config
 from pathlib import Path
-from dewan_moseq import load
+
+from pandas import DataFrame
+
+from dewan_moseq import load, analyze
 PATH = "../test_data/results.h5"
 
 LOGGING_CONFIG = {
@@ -39,8 +42,11 @@ def main():
         logger.error("File [%s] not found", PATH)
         return -1
 
-    all_data = load.relabel_data_dict(all_data)
-    print(all_data)
+    all_data: dict[str, DataFrame] = load.relabel_data_dict(all_data)
+
+    for animal in all_data:
+        analyze.process_experiment(all_data[animal])
+
 
 if __name__ == "__main__":
     main()
