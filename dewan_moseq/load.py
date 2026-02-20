@@ -14,6 +14,7 @@ def readh5(path: pathlib.Path) -> dict[str, pd.DataFrame]:
     all_data = {}
 
     with h5py.File(path, "r") as f:
+        logger.debug(f"Reading {path}")
         for experiment in f.keys():
             animal_df = pd.DataFrame(columns=keys)
             for key in keys:
