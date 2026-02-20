@@ -1,6 +1,7 @@
 import logging
 import pathlib
 import h5py
+import numpy as np
 import pandas as pd
 
 logger = logging.getLogger(__name__)
@@ -24,6 +25,22 @@ def readh5(path: pathlib.Path) -> dict[str, pd.DataFrame]:
                     animal_df[key] = raw_data
             all_data[experiment] = animal_df
         return all_data
+
+
+def relabel_data_dict(all_data: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
+    data_with_new_labels = {}
+
+    for key, value in all_data.items():
+        animal, _, new_key = decode_trial_name(key)
+
+        if animal not in data_with_new_labels.keys():
+            data_with_new_labels[animal] = {}
+            # If the animal dict does not exist, make it
+
+        data_with_new_labels[animal][new_key] = value
+
+    return data_with_new_labels
+
 
 
 def decode_trial_name(key_name: str) -> tuple[str, str, int]:
