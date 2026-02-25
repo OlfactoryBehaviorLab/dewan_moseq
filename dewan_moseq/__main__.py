@@ -4,9 +4,10 @@ from pathlib import Path
 
 from pandas import DataFrame
 
-from dewan_moseq import load, analyze
-PATH = "../test_data/results.h5"
+from dewan_moseq import load, analyze, write
 
+PATH = "../test_data/results.h5"
+OUTPUT_PATH = "../test_data/output"
 LOGGING_CONFIG = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -42,10 +43,11 @@ def main():
         logger.error("File [%s] not found", PATH)
         return -1
 
-    all_data: dict[str, DataFrame] = load.relabel_data_dict(all_data)
+    all_data, experiment = load.relabel_data_dict(all_data)
 
     for animal in all_data:
-        analyze.process_experiment(all_data[animal])
+        animal_data = analyze.process_experiment(all_data[animal])
+        write.write_experiment(animal_data, Path(OUTPUT_PATH), experiment)
 
 
 if __name__ == "__main__":
