@@ -8,13 +8,13 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 
 
-def process_experiment(experiment_data: dict[str, pd.DataFrame]):
+def process_experiment(experiment_data: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
     all_trial_stats = {}
 
     for trial_num, trial_data in experiment_data.items():
         all_trial_stats[trial_num] = process_trial(trial_data)
 
-    print(all_trial_stats)
+    return all_trial_stats
 
 def process_trial(trial_data: pd.DataFrame) -> pd.DataFrame:
     trial_stats = pd.DataFrame(
