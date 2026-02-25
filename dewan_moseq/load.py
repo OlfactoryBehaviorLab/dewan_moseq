@@ -28,11 +28,12 @@ def readh5(path: pathlib.Path) -> dict[str, pd.DataFrame]:
         return all_data
 
 
-def relabel_data_dict(all_data: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
+def relabel_data_dict(all_data: dict[str, pd.DataFrame]) -> tuple[dict[str, pd.DataFrame], str]:
     data_with_new_labels = {}
+    experiment = []
 
     for key, value in all_data.items():
-        animal, _, new_key = decode_trial_name(key)
+        animal, experiment, new_key = decode_trial_name(key)
 
         if animal not in data_with_new_labels.keys():
             data_with_new_labels[animal] = {}
@@ -40,7 +41,7 @@ def relabel_data_dict(all_data: dict[str, pd.DataFrame]) -> dict[str, pd.DataFra
 
         data_with_new_labels[animal][new_key] = value
 
-    return data_with_new_labels
+    return data_with_new_labels, experiment
 
 
 
