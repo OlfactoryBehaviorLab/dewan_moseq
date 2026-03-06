@@ -19,10 +19,10 @@ class DewanKPM:
 
         self.animal: str | None = None
         self.experiment: str | None = None
-        self.raw_trial_data: dict[str, pd.DataFrame] | None = None
-        self.trial_data: dict[int, pd.DataFrame] | None = None
+        self.raw_trial_data: dict[str, pd.DataFrame] | None = {}
+        self.trial_data: dict[int, pd.DataFrame] | None = {}
 
-        self.trial_stats: dict[int, pd.DataFrame] | None = None
+        self.trial_stats: dict[int, pd.DataFrame] | None = {}
 
     def load(self):
         self.read_moseqh5()
@@ -36,6 +36,7 @@ class DewanKPM:
         with h5py.File(self.filepath, "r") as f:
             logger.debug(f"Reading {self.filepath}")
             for trial in f.keys():
+                print(trial)
                 trial_df = pd.DataFrame(columns=KEYS)
                 for key in KEYS:
                     raw_data = f[trial][key][:]
@@ -85,6 +86,12 @@ class DewanKPM:
             trial_stats.loc[syllable] = self.get_syllable_stats(syllable_occurrences, num_frames)
         trial_stats = trial_stats.sort_index()
         return trial_stats
+
+    def __repr__(self):
+        return (f"DewanKPM: ({self.filepath})\n"
+                f"Animal: {self.animal}\n"
+                f"Experiment: {self.experiment}\n"
+                f"")
 
     @staticmethod
     def _decode_trial_name(key_name: str) -> tuple[str, str, int]:
