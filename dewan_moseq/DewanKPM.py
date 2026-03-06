@@ -91,7 +91,9 @@ class DewanKPMExperiment:
         self.animal: str = animal
         self.experiment: str = date
         self.raw_trial_data: dict[str, pd.DataFrame] = {}
-        self.trial_stats: dict[int, pd.DataFrame] | None = {}
+        self.pre_stim_stats: dict[int, pd.DataFrame] | None = {}
+        self.stim_stats: dict[int, pd.DataFrame] | None = {}
+        self.post_stim_stats: dict[int, pd.DataFrame] | None = {}
 
         self.preprocess_experiment()
         self.process_experiment()
@@ -103,7 +105,13 @@ class DewanKPMExperiment:
 
     def process_experiment(self):
         for trial_num, trial_data in self.raw_trial_data.items():
-            self.trial_stats[int(trial_num)] = self._process_trial(trial_data)
+            pre_stim_data = trial_data.iloc[0:120]
+            stim_data = trial_data.iloc[120:180]
+            post_stim_data = trial_data.iloc[180:]
+
+            self.pre_stim_stats[int(trial_num)] = self._process_trial(pre_stim_data)
+            self.stim_stats[int(trial_num)] = self._process_trial(stim_data)
+            self.post_stim_stats[int(trial_num)] = self._process_trial(post_stim_data)
 
     def write_to_excel(self, output_path: pathlib.Path):
         excel_path = output_path.with_name(f"{self.animal}-{self.experiment}-KPM-trial_stats.xlsx")
