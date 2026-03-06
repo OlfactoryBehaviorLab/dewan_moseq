@@ -1,3 +1,3 @@
-from dewan_moseq.DewanKPM import DewanKPM
+from dewan_moseq.DewanKPM import DewanKPMExperiment, DewanKPMParser
 
-__all__ = ['DewanKPM']
+__all__ = ['DewanKPMExperiment', "DewanKPMParser"]

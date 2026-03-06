@@ -8,25 +8,20 @@ import h5py
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-
 logger = logging.getLogger(__name__)
 KEYS = ['centroid', 'heading', 'latent_state', 'syllable']
 
+class DewanKPMParser:
+    def __init__(self, filepath: pathlib.Path):
+        self.filepath = filepath
 
-class DewanKPM:
-    def __init__(self, path: pathlib.Path):
-        self.filepath: pathlib.Path = path
+        self.raw_data: dict[str, dict] = {}
+        self.sorted_data: dict[str, dict] = defaultdict(lambda: defaultdict(dict))
+        self.parsed_and_sorted_data: dict[str, dict] = defaultdict(lambda: defaultdict(dict))
 
-        self.animal: str | None = None
-        self.experiment: str | None = None
-        self.raw_trial_data: dict[str, pd.DataFrame] | None = {}
-        self.trial_data: dict[int, pd.DataFrame] | None = {}
-
-        self.trial_stats: dict[int, pd.DataFrame] | None = {}
-
-    def load(self):
         self.read_moseqh5()
-        self.parse_trial_data()
+        self.sort_data()
+        self.parse_data()
 
 
     def read_moseqh5(self):
@@ -35,29 +30,80 @@ class DewanKPM:
 
         with h5py.File(self.filepath, "r") as f:
             logger.debug(f"Reading {self.filepath}")
-            for trial in f.keys():
-                print(trial)
-                trial_df = pd.DataFrame(columns=KEYS)
+            for video in f.keys():
+                video_dict = {}
                 for key in KEYS:
-                    raw_data = f[trial][key][:]
+                    raw_data = f[video][key][:]
                     if len(raw_data.shape) > 1:
                         _data = [tuple(data) for data in raw_data]
-                        trial_df[key] = _data
+                        video_dict[key] = _data
                     else:
-                        trial_df[key] = raw_data
-                self.raw_trial_data[trial] = trial_df
+                        video_dict[key] = raw_data
+                self.raw_data[video] = video_dict
 
 
-    def parse_trial_data(self):
-        for key, value in self.raw_trial_data.items():
-            self.animal, self.experiment, new_key = self._decode_trial_name(key)
-            self.trial_data[new_key] = value
+    def sort_data(self):
+        for key, data in self.raw_data.items():
+            animal, experiment, trial_num, experiment_date = self._decode_trial_name(key)
+            self.sorted_data[animal][experiment_date][trial_num] = data
 
+    def parse_data(self):
+        for animal, animal_dict in self.sorted_data.items():
+            for date, exp_data in animal_dict.items():
+                self.parsed_and_sorted_data[animal][date] = DewanKPMExperiment(exp_data, animal, date)
+
+
+    @staticmethod
+    def _decode_trial_name(key_name: str) -> tuple[str, str, str, str]:
+        """
+        Decode trial key into its constituent pieces
+
+        key is in the form [Animal]-[Experiment]-trial-[Trial_Number]-[Experiment_Date]DLC-[DLC_MODEL_INFORMATION]
+        Parameters
+        ----------
+        key_name : str
+            Trial key name
+
+        Returns
+        -------
+            Parsed String: tuple[str, str, str, str]
+                index 0: Animal, index 1: Experiment, index 2: Trial_Number, idnex 3: Experiment Date
+        """
+        pieces = key_name.split("DLC")[0].split("-")
+        animal, experiment = pieces[0], pieces[1]
+        trial_num = pieces[3]
+        experiment_date = '-'.join(pieces[4:])
+
+
+
+        return animal, experiment, trial_num, experiment_date
+
+
+    def __repr__(self):
+        return (f"DewanKPMParser({self.filepath})\n"
+                f"Number of Videos: {len(self.raw_data)}")
+
+
+class DewanKPMExperiment:
+    def __init__(self, experiment_data: dict, animal: str, date: str):
+        self.experiment_data: dict[str, dict] = experiment_data
+
+        self.animal: str = animal
+        self.experiment: str = date
+        self.raw_trial_data: dict[str, pd.DataFrame] = {}
+        self.trial_stats: dict[int, pd.DataFrame] | None = {}
+
+        self.preprocess_experiment()
+        self.process_experiment()
+
+    def preprocess_experiment(self):
+        for trial, trial_data in self.experiment_data.items():
+            trial_df = pd.DataFrame(trial_data, columns=KEYS)
+            self.raw_trial_data[trial] = trial_df
 
     def process_experiment(self):
-        for trial_num, trial_data in self.trial_data.items():
-            self.trial_stats[trial_num] = self._process_trial(trial_data)
-
+        for trial_num, trial_data in self.raw_trial_data.items():
+            self.trial_stats[int(trial_num)] = self._process_trial(trial_data)
 
     def write_to_excel(self, output_path: pathlib.Path):
         excel_path = output_path.with_name(f"{self.animal}-{self.experiment}-KPM-trial_stats.xlsx")
@@ -88,30 +134,8 @@ class DewanKPM:
         return trial_stats
 
     def __repr__(self):
-        return (f"DewanKPM: ({self.filepath})\n"
-                f"Animal: {self.animal}\n"
-                f"Experiment: {self.experiment}\n"
-                f"")
+        return f"DewanKPM Experiment: ({self.animal}-{self.experiment})"
 
-    @staticmethod
-    def _decode_trial_name(key_name: str) -> tuple[str, str, int]:
-        """
-        Decode trial key into its constituent pieces
-
-        key is in the form [Animal]-[Experiment]-trial-[Trial_Number]DLC-[DLC_MODEL_INFORMATION]
-        Parameters
-        ----------
-        key_name : str
-            Trial key name
-
-        Returns
-        -------
-            Parsed String: tuple[str, str, int]
-                index 0: Animal, index 1: Experiment, index 2: Trial_Number
-        """
-        pieces = key_name.split("DLC")[0].split("-")
-
-        return pieces[0], pieces[1], int(pieces[3])
 
     @staticmethod
     def get_syllable_groups(all_syllables: np.ndarray) -> dict:
