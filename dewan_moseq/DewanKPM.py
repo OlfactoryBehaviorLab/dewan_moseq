@@ -25,6 +25,7 @@ class DewanKPMParser:
 
 
     def read_moseqh5(self):
+        logger.info("Reading moseq h5 file...")
         if not self.filepath.exists() or not self.filepath.is_file():
             raise FileNotFoundError(f"File not found: {self.filepath}")
 
@@ -43,11 +44,13 @@ class DewanKPMParser:
 
 
     def sort_data(self):
+        logger.info("Sorting KPM output by animal, experiment, and trial...")
         for key, data in self.raw_data.items():
             animal, experiment, trial_num, experiment_date = self._decode_trial_name(key)
             self.sorted_data[animal][experiment_date][trial_num] = data
 
     def parse_data(self):
+        logger.info("Parsing KPM data by animal and date")
         for animal, animal_dict in self.sorted_data.items():
             for date, exp_data in animal_dict.items():
                 self.parsed_and_sorted_data[animal][date] = DewanKPMExperiment(exp_data, animal, date)
@@ -95,6 +98,10 @@ class DewanKPMExperiment:
         self.stim_stats: dict[int, pd.DataFrame] | None = {}
         self.post_stim_stats: dict[int, pd.DataFrame] | None = {}
 
+        self.pre_stim_syllables = {}
+        self.stim_syllables = {}
+        self.post_stim_syllables = {}
+
         self.preprocess_experiment()
         self.process_experiment()
 
@@ -104,14 +111,32 @@ class DewanKPMExperiment:
             self.raw_trial_data[trial] = trial_df
 
     def process_experiment(self):
+        pre_stim_df = pd.DataFrame()
+        stim_df = pd.DataFrame()
+        post_stim_df = pd.DataFrame()
         for trial_num, trial_data in self.raw_trial_data.items():
             pre_stim_data = trial_data.iloc[0:120]
             stim_data = trial_data.iloc[120:180]
             post_stim_data = trial_data.iloc[180:]
 
+            pre_stim_syllables = pre_stim_data["syllable"]
+            stim_syllables = pre_stim_data["syllable"]
+            post_stim_syllables = pre_stim_data["syllable"]
+            pre_stim_syllables.name=int(trial_num)
+            stim_syllables.name=int(trial_num)
+            post_stim_syllables.name=int(trial_num)
+
+            pre_stim_df = pd.concat((pre_stim_df, pre_stim_syllables), axis=1)
+            stim_df = pd.concat((stim_df, stim_syllables), axis=1)
+            post_stim_df = pd.concat((post_stim_df, post_stim_syllables), axis=1)
+
             self.pre_stim_stats[int(trial_num)] = self._process_trial(pre_stim_data)
             self.stim_stats[int(trial_num)] = self._process_trial(stim_data)
             self.post_stim_stats[int(trial_num)] = self._process_trial(post_stim_data)
+
+        self.pre_stim_syllables = pre_stim_df
+        self.stim_syllables = stim_df
+        self.post_stim_syllables = post_stim_df
 
     def write_to_excel(self, output_path: pathlib.Path):
         excel_path = output_path.with_name(f"{self.animal}-{self.experiment}-KPM-trial_stats.xlsx")
