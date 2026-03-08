@@ -120,8 +120,8 @@ class DewanKPMExperiment:
             post_stim_data = trial_data.iloc[180:]
 
             pre_stim_syllables = pre_stim_data["syllable"]
-            stim_syllables = pre_stim_data["syllable"]
-            post_stim_syllables = pre_stim_data["syllable"]
+            stim_syllables = stim_data["syllable"]
+            post_stim_syllables = post_stim_data["syllable"]
             pre_stim_syllables.name=int(trial_num)
             stim_syllables.name=int(trial_num)
             post_stim_syllables.name=int(trial_num)
