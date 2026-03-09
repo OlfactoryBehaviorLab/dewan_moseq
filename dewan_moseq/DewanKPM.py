@@ -8,8 +8,10 @@ import h5py
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+
 logger = logging.getLogger(__name__)
-KEYS = ['centroid', 'heading', 'latent_state', 'syllable']
+KEYS = ["centroid", "heading", "latent_state", "syllable"]
+
 
 class DewanKPMParser:
     def __init__(self, filepath: pathlib.Path):
@@ -17,12 +19,13 @@ class DewanKPMParser:
 
         self.raw_data: dict[str, dict] = {}
         self.sorted_data: dict[str, dict] = defaultdict(lambda: defaultdict(dict))
-        self.parsed_and_sorted_data: dict[str, dict] = defaultdict(lambda: defaultdict(dict))
+        self.parsed_and_sorted_data: dict[str, dict] = defaultdict(
+            lambda: defaultdict(dict)
+        )
 
         self.read_moseqh5()
         self.sort_data()
         self.parse_data()
-
 
     def read_moseqh5(self):
         logger.info("Reading moseq h5 file...")
@@ -42,19 +45,21 @@ class DewanKPMParser:
                         video_dict[key] = raw_data
                 self.raw_data[video] = video_dict
 
-
     def sort_data(self):
         logger.info("Sorting KPM output by animal, experiment, and trial...")
         for key, data in self.raw_data.items():
-            animal, experiment, trial_num, experiment_date = self._decode_trial_name(key)
+            animal, experiment, trial_num, experiment_date = self._decode_trial_name(
+                key
+            )
             self.sorted_data[animal][experiment_date][trial_num] = data
 
     def parse_data(self):
         logger.info("Parsing KPM data by animal and date")
         for animal, animal_dict in self.sorted_data.items():
             for date, exp_data in animal_dict.items():
-                self.parsed_and_sorted_data[animal][date] = DewanKPMExperiment(exp_data, animal, date)
-
+                self.parsed_and_sorted_data[animal][date] = DewanKPMExperiment(
+                    exp_data, animal, date
+                )
 
     @staticmethod
     def _decode_trial_name(key_name: str) -> tuple[str, str, str, str]:
@@ -75,16 +80,14 @@ class DewanKPMParser:
         pieces = key_name.split("DLC")[0].split("-")
         animal, experiment = pieces[0], pieces[1]
         trial_num = pieces[3]
-        experiment_date = '-'.join(pieces[4:])
-
-
+        experiment_date = "-".join(pieces[4:])
 
         return animal, experiment, trial_num, experiment_date
 
-
     def __repr__(self):
-        return (f"DewanKPMParser({self.filepath})\n"
-                f"Number of Videos: {len(self.raw_data)}")
+        return (
+            f"DewanKPMParser({self.filepath})\nNumber of Videos: {len(self.raw_data)}"
+        )
 
 
 class DewanKPMExperiment:
@@ -122,9 +125,9 @@ class DewanKPMExperiment:
             pre_stim_syllables = pre_stim_data["syllable"]
             stim_syllables = stim_data["syllable"]
             post_stim_syllables = post_stim_data["syllable"]
-            pre_stim_syllables.name=int(trial_num)
-            stim_syllables.name=int(trial_num)
-            post_stim_syllables.name=int(trial_num)
+            pre_stim_syllables.name = int(trial_num)
+            stim_syllables.name = int(trial_num)
+            post_stim_syllables.name = int(trial_num)
 
             pre_stim_df = pd.concat((pre_stim_df, pre_stim_syllables), axis=1)
             stim_df = pd.concat((stim_df, stim_syllables), axis=1)
@@ -139,19 +142,29 @@ class DewanKPMExperiment:
         self.post_stim_syllables = post_stim_df
 
     def write_to_excel(self, output_path: pathlib.Path):
-        excel_path = output_path.with_name(f"{self.animal}-{self.experiment}-KPM-trial_stats.xlsx")
+        excel_path = output_path.with_name(
+            f"{self.animal}-{self.experiment}-KPM-trial_stats.xlsx"
+        )
 
         if not output_path.exists():
             raise FileNotFoundError(f"Save directory does not exist!: {output_path}")
 
         with pd.ExcelWriter(excel_path) as writer:
-            for trial_num, trial_data in tqdm(self.trial_stats.items(), desc="Writing trials to disk:"):
+            for trial_num, trial_data in tqdm(
+                self.trial_stats.items(), desc="Writing trials to disk:"
+            ):
                 trial_data.to_excel(writer, sheet_name=str(trial_num))
 
     def _process_trial(self, trial_data: pd.DataFrame) -> pd.DataFrame:
         trial_stats = pd.DataFrame(
-            columns=['occurrences', 'occurrence_times', 'median_time', 'mean_time', 'median_percentage',
-                     'mean_percentage']
+            columns=[
+                "occurrences",
+                "occurrence_times",
+                "median_time",
+                "mean_time",
+                "median_percentage",
+                "mean_percentage",
+            ]
         )
         syllables = trial_data["syllable"]
         num_frames = syllables.shape[0]
@@ -162,13 +175,14 @@ class DewanKPMExperiment:
             # occurrences, times, median_time, mean_time, median_percentage, mean_percentage = self.get_syllable_stats(
             #     syllable_occurrences, num_frames
             # )
-            trial_stats.loc[syllable] = self.get_syllable_stats(syllable_occurrences, num_frames)
+            trial_stats.loc[syllable] = self.get_syllable_stats(
+                syllable_occurrences, num_frames
+            )
         trial_stats = trial_stats.sort_index()
         return trial_stats
 
     def __repr__(self):
         return f"DewanKPM Experiment: ({self.animal}-{self.experiment})"
-
 
     @staticmethod
     def get_syllable_groups(all_syllables: np.ndarray) -> dict:
@@ -181,8 +195,15 @@ class DewanKPMExperiment:
         return groups_dict
 
     @staticmethod
-    def get_syllable_stats(syllable_occurrences: list, num_frames: int) -> tuple[
-        int, list[int], np.floating[Any], np.floating[Any], np.floating[Any], np.floating[Any]
+    def get_syllable_stats(
+        syllable_occurrences: list, num_frames: int
+    ) -> tuple[
+        int,
+        list[int],
+        np.floating[Any],
+        np.floating[Any],
+        np.floating[Any],
+        np.floating[Any],
     ]:
         occurrence_lengths = [len(occurrence) for occurrence in syllable_occurrences]
         median_length: np.floating[Any] = np.median(occurrence_lengths)
@@ -196,5 +217,5 @@ class DewanKPMExperiment:
             median_length,
             mean_length,
             median_percentage,
-            mean_percentage
+            mean_percentage,
         )
